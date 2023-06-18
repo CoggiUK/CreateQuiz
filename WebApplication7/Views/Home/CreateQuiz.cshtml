@@ -1,0 +1,280 @@
+﻿@model WebApplication7.Models.Quiz
+
+@{
+    ViewBag.Title = "CreateQuiz";
+}
+
+@using (Html.BeginForm())
+{
+    <h2>Create Quiz</h2>
+
+    <div class="form-group">
+        @Html.LabelFor(model => model.QuizName, new { @class = "control-label" })
+        @Html.TextBoxFor(model => model.QuizName, new { @class = "form-control", id = "quizName" })
+        @Html.ValidationMessageFor(model => model.QuizName, "", new { @class = "text-danger" })
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(model => model.QuizTime, new { @class = "control-label" })
+        @Html.TextBoxFor(model => model.QuizTime, new { @class = "form-control", id = "quizTime" })
+        @Html.ValidationMessageFor(model => model.QuizTime, "", new { @class = "text-danger" })
+    </div>
+
+    <div class="form-group">
+        <label for="questionCount">Number of Questions:</label>
+        <span id="questionCount">@Model.Questions.Count</span>
+    </div>
+
+    <div id="questionsContainer">
+        @for (int i = 0; i < Model.Questions.Count; i++)
+        {
+            <div class="question card mb-3">
+                <h4 class="card-header">Question @(i + 1)</h4>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="questionText">Question Text:</label>
+                        <input type="text" name="Questions[@i].Text" value="@Model.Questions[i].Text" class="form-control" />
+                        @Html.ValidationMessageFor(model => model.Questions[i].Text, "", new { @class = "text-danger" })
+                    </div>
+                    <div class="form-group">
+                        <label for="questionType">Question Type:</label>
+                        <select name="Questions[@i].QuestionType" class="form-control" onchange="showAnswersContainer(this)">
+                            <option value="SelectOne" @(Model.Questions[i].QuestionType == WebApplication7.Models.ChoiceType.SelectOne ? "selected" : "")>Select One</option>
+                            <option value="SelectMultiple" @(Model.Questions[i].QuestionType == WebApplication7.Models.ChoiceType.SelectMultiple ? "selected" : "")>Select Multiple</option>
+                        </select>
+                    </div>
+                    <div class="form-group answers-container">
+                        <label for="answers">Answers:</label>
+                        <div class="answer-container">
+                            @for (int j = 0; j < Model.Questions[i].Answers.Count; j++)
+                            {
+                                <div class="answer-item">
+                                    <div class="input-group">
+                                        @if (Model.Questions[i].QuestionType == WebApplication7.Models.ChoiceType.SelectOne)
+                                        {
+                                            <input type="radio" name="Questions[@i].SelectedAnswerIndexes" value="@j" class="form-check-input" @(j == 0 ? "checked" : "") />
+                                        }
+                                        else if (Model.Questions[i].QuestionType == WebApplication7.Models.ChoiceType.SelectMultiple)
+                                        {
+                                            <input type="checkbox" name="Questions[@i].SelectedAnswerIndexes" value="@j" class="form-check-input" />
+                                        }
+
+                                        <input type="text" name="Questions[@i].Answers[@j].Text" value="@Model.Questions[i].Answers[j].Text" class="form-control" />
+                                        <input type="hidden" name="Questions[@i].Answers[@j].Id" value="@Model.Questions[i].Answers[j].Id" />
+                                        @if (Model.Questions[i].QuestionType == WebApplication7.Models.ChoiceType.SelectMultiple)
+                                        {
+                                            <select name="Questions[@i].Answers[@j].Percentage" class="form-control">
+                                                <option value="0">0%</option>
+                                                <option value="30">30%</option>
+                                                <option value="40">40%</option>
+                                                <option value="50">50%</option>
+                                                <option value="60">60%</option>
+                                                <option value="70">70%</option>
+                                                <option value="80">80%</option>
+                                                <option value="90">90%</option>
+                                                <option value="100">100%</option>
+                                            </select>
+                                        }
+                                        <div class="input-group-append">
+                                            <button type="button" class="btn btn-sm btn-danger delete-answer" onclick="deleteAnswer(this)">Delete</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="button" class="btn btn-danger" onclick="deleteQuestion(this)">Delete Question</button>
+                    <button type="button" class="btn btn-primary" onclick="addAnswer(this)">Add Answer</button>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div>
+        <button type="button" class="btn btn-primary" onclick="addQuestion()">Add Question</button>
+    </div>
+
+    <div id="notificationContainer" style="display: none;"></div>
+
+    <button type="submit" class="btn btn-primary" onclick="return validateQuizForm()">Submit Quiz</button>
+}
+
+<script>
+    var questionCounter = @Model.Questions.Count;
+
+    function addQuestion() {
+        var questionHtml = `
+            <div class="question card mb-3">
+                <h4 class="card-header">Question ${questionCounter + 1}</h4>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="questionText">Question Text:</label>
+                        <input type="text" name="Questions[${questionCounter}].Text" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label for="questionType">Question Type:</label>
+                        <select name="Questions[${questionCounter}].QuestionType" class="form-control" onchange="showAnswersContainer(this)">
+                            <option value="SelectOne">Select One</option>
+                            <option value="SelectMultiple">Select Multiple</option>
+                        </select>
+                    </div>
+                    <div class="form-group answers-container">
+                        <label for="answers">Answers:</label>
+                        <div class="answer-container"></div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="button" class="btn btn-danger" onclick="deleteQuestion(this)">Delete Question</button>
+                    <button type="button" class="btn btn-primary" onclick="addAnswer(this)">Add Answer</button>
+                </div>
+            </div>
+        `;
+
+        $('#questionsContainer').append(questionHtml);
+        $('#questionCount').text(questionCounter + 1);
+        questionCounter++;
+    }
+
+    function deleteQuestion(button) {
+        var questionContainer = $(button).closest('.question');
+        questionContainer.remove();
+
+        var questionCount = $('#questionsContainer .question').length;
+        $('#questionCount').text(questionCount);
+
+        if (questionCount === 0) {
+            questionCounter = 0;
+        } else {
+            $('#questionsContainer .question').each(function (index) {
+                var questionNumber = index + 1;
+                $(this).find('.card-header').text('Question ' + questionNumber);
+                $(this).find('input[name^="Questions"]').each(function () {
+                    var newName = $(this).attr('name').replace(/\[\d+\]/, '[' + index + ']');
+                    $(this).attr('name', newName);
+                });
+            });
+        }
+    }
+
+
+    function addAnswer(button) {
+        var answerContainer = $(button).closest('.question').find('.answer-container');
+        var answerIndex = answerContainer.children().length;
+
+        var inputType = getInputType(answerContainer);
+
+        var answerHtml = `
+            <div class="answer-item">
+                <div class="input-group">
+                    <input type="${inputType}" name="Questions[${questionCounter - 1}].SelectedAnswerIndexes" value="${answerIndex}" class="form-check-input" />
+                    <input type="text" name="Questions[${questionCounter - 1}].Answers[${answerIndex}].Text" class="form-control" />
+                    ${inputType === 'checkbox' ? `
+                        <select name="Questions[${questionCounter - 1}].Answers[${answerIndex}].Percentage" class="form-control">
+                            <option value="0">0%</option>
+                            <option value="30">30%</option>
+                            <option value="40">40%</option>
+                            <option value="50">50%</option>
+                            <option value="60">60%</option>
+                            <option value="70">70%</option>
+                            <option value="80">80%</option>
+                            <option value="90">90%</option>
+                            <option value="100">100%</option>
+                        </select>
+                    ` : ''}
+                    <div class="input-group-append">
+                        <button type="button" class="btn btn-sm btn-danger delete-answer" onclick="deleteAnswer(this)">Delete</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        answerContainer.append(answerHtml);
+    }
+
+    function deleteAnswer(button) {
+        $(button).closest('.answer-item').remove();
+    }
+
+    function showAnswersContainer(select) {
+        var answersContainer = $(select).closest('.question').find('.answers-container');
+        var questionType = $(select).val();
+
+        // Ẩn toàn bộ các đáp án
+        answersContainer.find('.answer-item').hide();
+
+        if (questionType === 'SelectOne') {
+            // Hiển thị đáp án của Select One
+            answersContainer.find('input[type="radio"]').closest('.answer-item').show();
+        } else if (questionType === 'SelectMultiple') {
+            // Hiển thị đáp án của Select Multiple
+            answersContainer.find('input[type="checkbox"]').closest('.answer-item').show();
+        }
+    }
+
+    function getInputType(answerContainer) {
+        var questionType = answerContainer.closest('.question').find('select[name^="Questions"]').val();
+
+        return questionType === 'SelectOne' ? 'radio' : 'checkbox';
+    }
+
+    function validateQuizForm() {
+        var quizName = $('#quizName').val().trim();
+        var quizTime = $('#quizTime').val().trim();
+        var questions = $('#questionsContainer .question');
+
+        if (quizName === '' || quizTime === '') {
+            alert('Quiz name and quiz time are required.');
+            return false;
+        }
+
+        var validAnswerCount = true;
+        questions.each(function () {
+            var question = $(this);
+            var questionType = question.find('select[name^="Questions"]').val();
+            var answerContainer = question.find('.answer-container');
+            var selectedAnswers = answerContainer.find('input:checked');
+
+            if (selectedAnswers.length === 0 && questionType !== 'SelectOne') {
+                validAnswerCount = false;
+                return false;
+            }
+        });
+
+        if (!validAnswerCount) {
+            alert('Please select at least one answer for each question.');
+            return false;
+        }
+
+        var validPercentage = true;
+        questions.each(function () {
+            var question = $(this);
+            var questionType = question.find('select[name^="Questions"]').val();
+
+            if (questionType === 'SelectMultiple') {
+                var answers = question.find('.answer-item');
+                var totalPercentage = 0;
+
+                answers.each(function () {
+                    var answer = $(this);
+                    var percentage = parseInt(answer.find('select[name$=".Percentage"]').val());
+                    totalPercentage += percentage;
+                });
+
+                if (totalPercentage !== 100) {
+                    validPercentage = false;
+                    return false;
+                }
+            }
+        });
+
+        if (!validPercentage) {
+            alert('The total percentage for each Select Multiple question must be 100.');
+            return false;
+        }
+
+        return true;
+    }
+</script>
+
